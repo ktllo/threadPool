@@ -8,8 +8,10 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class ThreadPoolTest {
+import jdk.internal.org.jline.utils.Log;
 
+class ThreadPoolTest {
+	Logger log = LoggerFactory.getLogger(ThreadPoolTest.class);
 	@Test
 	void test() {
 		Logger log = LoggerFactory.getLogger("main");
@@ -18,8 +20,9 @@ class ThreadPoolTest {
 	}
 	
 	int doneCount = 0;
+	Object token = new Object();
 	@Test
-	void queueTest() {
+	void queueTest() throws InterruptedException {
 		ThreadPool tp = new ThreadPool();
 		for(int i=0;i<100;i++) {
 			tp.execute(new Runnable() {
@@ -36,14 +39,22 @@ class ThreadPoolTest {
 							e.printStackTrace();
 						}
 					}
-					doneCount++;
+					synchronized(token) {
+						log.info("Done count {}",++doneCount);
+						token.notifyAll();
+					}
 				}
 				
 			});
 		}
 		while(true) {
-			if(doneCount!=100)
-				continue;
+			synchronized(token) {
+				log.info("Done Count {}", doneCount);
+				if(doneCount>=100) {
+					break;
+				}
+				token.wait();
+			}
 		}
 	}
 
